@@ -1,0 +1,99 @@
+name: batchforge
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: batchforge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-batchforge}
+      POSTGRES_USER: ${POSTGRES_USER:-batchforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-batchforge}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: batchforge-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-batchforge}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-batchforge}
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7
+    container_name: batchforge-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-batchforge}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-batchforge}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  minio:
+    image: minio/minio:latest
+    container_name: batchforge-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-batchforge}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-batchforge}
+    ports:
+      - "9000:9000"     # S3 API
+      - "9001:9001"     # console
+    volumes:
+      - minio-data:/data
+
+  # One-shot: waits for MinIO, then creates the bucket. Exits 0 when done.
+  minio-init:
+    image: minio/mc:latest
+    container_name: batchforge-minio-init
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-batchforge}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-batchforge}
+      MINIO_BUCKET: ${MINIO_BUCKET:-batchforge}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until mc alias set local "http://minio:9000" "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
+          echo 'waiting for MinIO...'
+          sleep 2
+        done
+        mc mb --ignore-existing "local/$$MINIO_BUCKET"
+        echo "MinIO bucket ready: $$MINIO_BUCKET"
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  redis-data:
+  minio-data:

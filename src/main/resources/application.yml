@@ -42,6 +42,10 @@ spring:
       password: ${REDIS_PASSWORD:batchforge}
 
 batchforge:
+  jwt:
+    secret: ${BATCHFORGE_JWT_SECRET:dev-only-insecure-secret-change-me-in-production-1234567890}
+    access-token-ttl: PT15M
+    refresh-token-ttl: P7D
   storage:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
     access-key: ${MINIO_ACCESS_KEY:batchforge}

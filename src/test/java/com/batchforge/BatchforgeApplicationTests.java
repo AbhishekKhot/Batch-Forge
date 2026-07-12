@@ -1,13 +1,11 @@
 package com.batchforge;
 
+import com.batchforge.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class BatchforgeApplicationTests {
+class BatchforgeApplicationTests extends IntegrationTest {
 
 	@Test
 	void contextLoads() {
 	}
-
 }

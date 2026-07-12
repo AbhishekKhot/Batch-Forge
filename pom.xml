@@ -102,7 +102,6 @@
 			<version>${commons-csv.version}</version>
 		</dependency>
 
-		<!-- Token-bucket core only; Redis-backed module (bucket4j_jdk17-lettuce) added in Phase 7 -->
 		<dependency>
 			<groupId>com.bucket4j</groupId>
 			<artifactId>bucket4j_jdk17-core</artifactId>

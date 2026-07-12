@@ -1,0 +1,23 @@
+CREATE TABLE jobs (
+     id                      UUID          NOT NULL,
+     org_id                  UUID          NOT NULL,
+     submitted_by            UUID          NOT NULL,
+     job_type                VARCHAR(32)   NOT NULL DEFAULT 'CSV_IMPORT',
+     status                  VARCHAR(32)   NOT NULL DEFAULT 'PENDING',
+     source_object_key       VARCHAR(1024) NOT NULL,
+     result_object_key       VARCHAR(1024),
+     error_report_object_key VARCHAR(1024),
+     total_rows              BIGINT,
+     processed_rows          BIGINT        NOT NULL DEFAULT 0,
+     failed_rows             BIGINT        NOT NULL DEFAULT 0,
+     last_processed_row      BIGINT        NOT NULL DEFAULT 0,
+     retry_count             INTEGER       NOT NULL DEFAULT 0,
+     version                 BIGINT        NOT NULL DEFAULT 0,
+     created_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+     updated_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+     CONSTRAINT pk_jobs PRIMARY KEY (id),
+     CONSTRAINT fk_jobs_organization FOREIGN KEY (org_id) REFERENCES organizations (id),
+     CONSTRAINT fk_jobs_submitted_by FOREIGN KEY (submitted_by) REFERENCES users (id),
+     CONSTRAINT ck_jobs_job_type CHECK (job_type IN ('CSV_IMPORT')),
+     CONSTRAINT ck_jobs_status CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'))
+);

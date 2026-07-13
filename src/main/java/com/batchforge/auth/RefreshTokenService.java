@@ -71,7 +71,7 @@ public class RefreshTokenService {
         String key = KEY_PREFIX + familyId;
         redis.<String, String>opsForHash()
                 .putAll(key, Map.of(FIELD_USER_ID, userId, FIELD_TOKEN_HASH, tokenHash));
-        redis.expire(key, refreshTokenTtl.toSeconds(), TimeUnit.SECONDS);
+        redis.expire(key, refreshTokenTtl);
     }
 
     private Parsed parse(String token) {

@@ -88,4 +88,8 @@ public class Job {
     public void markProcessing() {
         this.status = JobStatus.PROCESSING;
     }
+
+    public void markQueued(){
+        this.status = JobStatus.QUEUED;
+    }
 }

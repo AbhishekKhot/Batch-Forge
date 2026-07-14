@@ -17,6 +17,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.flywaydb.core.api.MigrationVersion;
 
 @Testcontainers
 class V1MigrationTest {
@@ -31,6 +32,7 @@ class V1MigrationTest {
     static void applyMigrations() {
         flyway = Flyway.configure()
                 .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .target(MigrationVersion.fromVersion("1.5"))   // this test validates the V1 baseline only
                 .load();
         flyway.migrate();
     }

@@ -51,6 +51,7 @@ batchforge:
     access-key: ${MINIO_ACCESS_KEY:batchforge}
     secret-key: ${MINIO_SECRET_KEY:batchforge}
     bucket: ${MINIO_BUCKET:batchforge}
+    upload-url-ttl: PT15M
 
 management:
   endpoints:

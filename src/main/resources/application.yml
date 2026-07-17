@@ -34,7 +34,18 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:batchforge}
     password: ${RABBITMQ_PASSWORD:batchforge}
-
+    listener:
+      simple:
+        concurrency: 3
+        max-concurrency: 3
+        prefetch: 1
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 1s
+          multiplier: 2
+          max-interval: 10s
+          max-retries: 5
   data:
     redis:
       host: ${REDIS_HOST:localhost}

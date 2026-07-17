@@ -92,4 +92,12 @@ public class Job {
     public void markQueued(){
         this.status = JobStatus.QUEUED;
     }
+
+    public void markCompleted() {
+        this.status = JobStatus.COMPLETED;
+    }
+
+    public void markFailed() {
+        this.status = JobStatus.FAILED;
+    }
 }

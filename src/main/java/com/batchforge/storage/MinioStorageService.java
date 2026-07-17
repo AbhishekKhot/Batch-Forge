@@ -12,6 +12,8 @@ import io.minio.Http;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import io.minio.GetObjectArgs;
+import java.io.InputStream;
 
 @Service
 public class MinioStorageService {
@@ -77,6 +79,18 @@ public class MinioStorageService {
             } catch (MinioException e) {
                 throw new StorageException("Failed to ensure bucket '" + properties.bucket() + "' exists", e);
             }
+        }
+    }
+
+    /** Streaming read of an object. The caller must close the returned stream. */
+    public InputStream getObject(String objectKey) {
+        try {
+            return minioClient.getObject(GetObjectArgs.builder()
+                    .bucket(properties.bucket())
+                    .object(objectKey)
+                    .build());
+        } catch (MinioException e) {
+            throw new StorageException("Failed to read object '" + objectKey + "'", e);
         }
     }
 }

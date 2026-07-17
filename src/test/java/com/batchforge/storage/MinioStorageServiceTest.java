@@ -13,7 +13,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-
+import java.io.InputStream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
@@ -44,5 +44,21 @@ class MinioStorageServiceTest {
     @Test
     void objectSizeIsEmptyForMissingObject() {
         assertThat(storageService.objectSize("nope/missing.csv")).isEmpty();
+    }
+
+    @Test
+    void getObjectReturnsUploadedBytes() throws Exception {
+        String key = "org-2/job-2/source.csv";
+        byte[] content = "email,first_name\nz@x.com,Zed\n".getBytes(StandardCharsets.UTF_8);
+
+        HttpResponse<Void> put = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create(storageService.presignedUploadUrl(key)))
+                        .PUT(HttpRequest.BodyPublishers.ofByteArray(content)).build(),
+                HttpResponse.BodyHandlers.discarding());
+        assertThat(put.statusCode()).isEqualTo(200);
+
+        try (InputStream in = storageService.getObject(key)) {
+            assertThat(in.readAllBytes()).isEqualTo(content);
+        }
     }
 }

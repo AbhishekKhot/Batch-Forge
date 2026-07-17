@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -11,17 +12,17 @@ import java.util.UUID;
 public class JobProcessingService {
 
     private final JobRepository jobRepository;
+    private final ImportedRecordRepository importedRecordRepository;
+    private final ImportErrorRepository importErrorRepository;
 
-    public JobProcessingService(JobRepository jobRepository) {
+    public JobProcessingService(JobRepository jobRepository,
+                                ImportedRecordRepository importedRecordRepository,
+                                ImportErrorRepository importErrorRepository) {
         this.jobRepository = jobRepository;
+        this.importedRecordRepository = importedRecordRepository;
+        this.importErrorRepository = importErrorRepository;
     }
 
-    /**
-     * Decide whether to process this delivery, in its own committed transaction.
-     * QUEUED -> transition to PROCESSING and return true; already PROCESSING -> return true
-     * (a retry or redelivery resuming an in-flight job); COMPLETED/FAILED/unknown -> return false.
-     * Re-entrancy on PROCESSING is what lets listener retry actually re-run the work.
-     */
     @Transactional
     public boolean claim(UUID jobId) {
         Job job = jobRepository.findById(jobId).orElse(null);
@@ -35,10 +36,31 @@ public class JobProcessingService {
             return true;
         }
         if (status == JobStatus.PROCESSING) {
-            return true;
+            return true;   // retry / redelivery of an in-flight job -> resume
         }
         log.info("Job {} is {}; ignoring redelivery", jobId, status);
         return false;
+    }
+
+    @Transactional(readOnly = true)
+    public ProcessingContext loadProcessingContext(UUID jobId) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new IllegalStateException("Job not found: " + jobId));
+        return new ProcessingContext(job.getSourceObjectKey(), job.getLastProcessedRow());
+    }
+
+    /** One atomic checkpoint: imported rows, error rows, and the progress update commit together. */
+    @Transactional
+    public void flushBatch(UUID jobId, List<ImportedRecord> importedRows, List<ImportError> errorRows,
+                           long lastProcessedRow, long processedDelta, long failedDelta) {
+        if (!importedRows.isEmpty()) {
+            importedRecordRepository.insertBatch(importedRows);
+        }
+        if (!errorRows.isEmpty()) {
+            importErrorRepository.insertBatch(errorRows);
+        }
+        jobRepository.findById(jobId).ifPresent(job ->
+                job.advanceProgress(lastProcessedRow, processedDelta, failedDelta));
     }
 
     @Transactional
@@ -53,5 +75,8 @@ public class JobProcessingService {
                 job.markFailed();
             }
         });
+    }
+
+    public record ProcessingContext(String sourceObjectKey, long resumeFrom) {
     }
 }

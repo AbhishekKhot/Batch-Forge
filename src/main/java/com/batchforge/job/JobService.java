@@ -1,8 +1,13 @@
 package com.batchforge.job;
 
+import com.batchforge.common.PagedResponse;
 import com.batchforge.common.error.ApiException;
 import com.batchforge.storage.MinioStorageService;
 import com.batchforge.storage.StorageProperties;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,5 +61,24 @@ public class JobService {
 
         job.markQueued();
         return new JobStatusResponse(job.getId(), job.getStatus());
+    }
+
+    @Transactional(readOnly = true)
+    public JobResponse getJob(UUID jobId, UUID orgId) {
+        return jobRepository.findByIdAndOrgId(jobId, orgId)
+                .map(JobResponse::from)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "JOB_NOT_FOUND", "Job not found"));
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<JobResponse> listJobs(UUID orgId, int page, int size, JobStatus status) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        Pageable pageable = PageRequest.of(safePage, safeSize,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));  // total order -> stable pages
+        Page<Job> jobs = (status == null)
+                ? jobRepository.findByOrgId(orgId, pageable)
+                : jobRepository.findByOrgIdAndStatus(orgId, status, pageable);
+        return PagedResponse.of(jobs.map(JobResponse::from));
     }
 }

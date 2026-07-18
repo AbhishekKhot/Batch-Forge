@@ -4,6 +4,7 @@ import com.batchforge.common.PagedResponse;
 import com.batchforge.common.error.ApiException;
 import com.batchforge.storage.MinioStorageService;
 import com.batchforge.storage.StorageProperties;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,15 +22,17 @@ public class JobService {
     private final JobRepository jobRepository;
     private final MinioStorageService storageService;
     private final StorageProperties storageProperties;
+    private final ApplicationEventPublisher events;
 
     public JobService(JobRepository jobRepository,
                       MinioStorageService storageService,
-                      StorageProperties storageProperties) {
+                      StorageProperties storageProperties,
+                      ApplicationEventPublisher events) {
         this.jobRepository = jobRepository;
         this.storageService = storageService;
         this.storageProperties = storageProperties;
+        this.events = events;
     }
-
     @Transactional
     public CreateJobResponse createImportJob(UUID orgId, UUID submittedBy) {
         String objectKey = orgId + "/" + UUID.randomUUID() + "/source.csv";
@@ -60,6 +63,7 @@ public class JobService {
         }
 
         job.markQueued();
+        events.publishEvent(new JobQueuedEvent(job.getId()));
         return new JobStatusResponse(job.getId(), job.getStatus());
     }
 

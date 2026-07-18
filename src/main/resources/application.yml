@@ -45,7 +45,7 @@ spring:
           initial-interval: 1s
           multiplier: 2
           max-interval: 10s
-          max-retries: 5
+          max-attempts: 5
   data:
     redis:
       host: ${REDIS_HOST:localhost}

@@ -10,10 +10,15 @@ import io.minio.errors.ErrorResponseException;
 import io.minio.errors.MinioException;
 import io.minio.Http;
 import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import io.minio.GetObjectArgs;
 import java.io.InputStream;
+import io.minio.PutObjectArgs;
+import java.io.ByteArrayInputStream;
 
 @Service
 public class MinioStorageService {
@@ -91,6 +96,34 @@ public class MinioStorageService {
                     .build());
         } catch (MinioException e) {
             throw new StorageException("Failed to read object '" + objectKey + "'", e);
+        }
+    }
+
+    public void putObject(String objectKey, byte[] content, String contentType) {
+        ensureBucketExists();
+        try {
+            minioClient.putObject(PutObjectArgs.builder()
+                    .bucket(properties.bucket())
+                    .object(objectKey)
+                    .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
+                    .contentType(contentType)
+                    .build());
+        } catch (MinioException e) {
+            throw new StorageException("Failed to store object " + objectKey, e);
+        }
+    }
+
+    public String presignedDownloadUrl(String objectKey) {
+        ensureBucketExists();
+        try {
+            return minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+                    .method(Http.Method.GET)
+                    .bucket(properties.bucket())
+                    .object(objectKey)
+                    .expiry((int) properties.uploadUrlTtl().toSeconds(), TimeUnit.SECONDS)
+                    .build());
+        } catch (MinioException e) {
+            throw new StorageException("Failed to presign download URL for '" + objectKey + "'", e);
         }
     }
 }

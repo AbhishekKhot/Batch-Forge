@@ -86,4 +86,28 @@ public class JobService {
                 : jobRepository.findByOrgIdAndStatus(orgId, status, pageable);
         return PagedResponse.of(jobs.map(JobResponse::from));
     }
+
+    @Transactional(readOnly = true)
+    public ResultResponse getResult(UUID jobId, UUID orgId) {
+        Job job = jobRepository.findByIdAndOrgId(jobId, orgId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "JOB_NOT_FOUND", "Job not found: " + jobId));
+
+        JobStatus status = job.getStatus();
+        if (status == JobStatus.FAILED) {
+            throw new ApiException(HttpStatus.CONFLICT, "JOB_FAILED",
+                    "Job " + jobId + " failed; no result is available");
+        }
+        if (status != JobStatus.COMPLETED) {
+            throw new ApiException(HttpStatus.CONFLICT, "RESULT_NOT_READY",
+                    "Job " + jobId + " is " + status + "; the result is not ready yet");
+        }
+
+        String key = job.getErrorReportObjectKey();
+        if (key == null) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "NO_ERROR_REPORT",
+                    "Job completed with no row failures; no error report was generated");
+        }
+        return new ResultResponse(storageService.presignedDownloadUrl(key),
+                Instant.now().plus(storageProperties.uploadUrlTtl()));
+    }
 }

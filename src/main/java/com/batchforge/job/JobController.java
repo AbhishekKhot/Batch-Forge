@@ -39,6 +39,11 @@ public class JobController {
         return jobService.getJob(id, user.orgId());
     }
 
+    @GetMapping("/{id}/result")
+    public ResultResponse getResult(@PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUser user) {
+        return jobService.getResult(id, user.orgId());
+    }
+
     @GetMapping
     public PagedResponse<JobResponse> listJobs(
             @AuthenticationPrincipal AuthenticatedUser user,

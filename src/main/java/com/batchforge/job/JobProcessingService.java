@@ -79,4 +79,14 @@ public class JobProcessingService {
 
     public record ProcessingContext(String sourceObjectKey, long resumeFrom) {
     }
+
+    @Transactional(readOnly = true)
+    public List<ImportError> getErrors(UUID jobId) {
+        return importErrorRepository.findByJobIdOrderByRow(jobId);
+    }
+
+    @Transactional
+    public void attachErrorReport(UUID jobId, String errorReportObjectKey) {
+        jobRepository.findById(jobId).ifPresent(job -> job.attachErrorReport(errorReportObjectKey));
+    }
 }

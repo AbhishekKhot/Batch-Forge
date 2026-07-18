@@ -1,11 +1,15 @@
 package com.batchforge.job;
 
 import com.batchforge.storage.MinioStorageService;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringWriter;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -34,6 +38,36 @@ public class ImportProcessor {
         } catch (IOException e) {
             throw new UncheckedIOException("Failed while reading source for job " + jobId, e);
         }
+        writeErrorReport(jobId, ctx.sourceObjectKey());
+    }
+
+    /** Renders the report from the durable {@code import_errors} rows, so it always matches
+     *  failed_rows — including failures committed before a crash/resume. */
+    private void writeErrorReport(UUID jobId, String sourceObjectKey) {
+        List<ImportError> errors = jobProcessing.getErrors(jobId);
+        if (errors.isEmpty()) {
+            return;
+        }
+        String errorKey = errorReportKey(sourceObjectKey);
+        storage.putObject(errorKey, renderCsv(errors), "text/csv");
+        jobProcessing.attachErrorReport(jobId, errorKey);
+    }
+
+    private byte[] renderCsv(List<ImportError> errors) {
+        StringWriter out = new StringWriter();
+        try (CSVPrinter printer = new CSVPrinter(out, CSVFormat.DEFAULT)) {
+            printer.printRecord("row_number", "error");
+            for (ImportError error : errors) {
+                printer.printRecord(error.sourceRowNumber(), error.reason());
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to render error report", e);
+        }
+        return out.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static String errorReportKey(String sourceObjectKey) {
+        return sourceObjectKey.substring(0, sourceObjectKey.lastIndexOf('/') + 1) + "errors.csv";
     }
 
     /** Buffers imported rows and failures into ~BATCH_SIZE chunks, checkpointing each flush

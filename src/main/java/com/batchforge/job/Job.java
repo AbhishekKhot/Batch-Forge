@@ -108,5 +108,7 @@ public class Job {
         this.failedRows += failedDelta;
     }
 
-
+    public void attachErrorReport(String errorReportObjectKey) {
+        this.errorReportObjectKey = errorReportObjectKey;
+    }
 }

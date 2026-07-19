@@ -77,3 +77,23 @@ logging:
   level:
     root: INFO
     com.batchforge: DEBUG
+
+resilience4j:
+  retry:
+    instances:
+      minio:
+        max-attempts: 3
+        wait-duration: 200ms
+        retry-exceptions:
+          - com.batchforge.storage.StorageException
+  circuitbreaker:
+    instances:
+      minio:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        record-exceptions:
+          - com.batchforge.storage.StorageException

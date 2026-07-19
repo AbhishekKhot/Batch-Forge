@@ -1,5 +1,7 @@
 package com.batchforge.storage;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import io.minio.BucketExistsArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MakeBucketArgs;
@@ -48,6 +50,8 @@ public class MinioStorageService {
     }
 
     /** Size in bytes if the object exists; empty if it does not. */
+    @Retry(name="minio")
+    @CircuitBreaker(name="minio")
     public Optional<Long> objectSize(String objectKey) {
         ensureBucketExists();
         try {
@@ -88,6 +92,8 @@ public class MinioStorageService {
     }
 
     /** Streaming read of an object. The caller must close the returned stream. */
+    @Retry(name="minio")
+    @CircuitBreaker(name="minio")
     public InputStream getObject(String objectKey) {
         try {
             return minioClient.getObject(GetObjectArgs.builder()
@@ -99,6 +105,8 @@ public class MinioStorageService {
         }
     }
 
+    @Retry(name="minio")
+    @CircuitBreaker(name="minio")
     public void putObject(String objectKey, byte[] content, String contentType) {
         ensureBucketExists();
         try {

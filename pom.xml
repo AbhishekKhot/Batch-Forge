@@ -108,15 +108,6 @@
 			<artifactId>commons-csv</artifactId>
 			<version>${commons-csv.version}</version>
 		</dependency>
-
-		<!-- Token-bucket core only; Redis-backed module (bucket4j_jdk17-lettuce) added in Phase 7 -->
-		<dependency>
-			<groupId>com.bucket4j</groupId>
-			<artifactId>bucket4j_jdk17-core</artifactId>
-			<version>${bucket4j.version}</version>
-		</dependency>
-
-		<!-- Gson backend, not jjwt-jackson: keeps Jackson 2 off a Jackson 3 classpath -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-api</artifactId>
@@ -202,6 +193,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-redis-test</artifactId>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-core</artifactId>
+			<version>8.19.0</version>
 		</dependency>
 	</dependencies>
 

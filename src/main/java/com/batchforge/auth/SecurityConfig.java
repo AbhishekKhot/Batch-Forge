@@ -1,5 +1,8 @@
 package com.batchforge.auth;
 
+import com.batchforge.ratelimit.AuthRateLimitFilter;
+import com.batchforge.ratelimit.RateLimitFilter;
+import com.batchforge.ratelimit.RateLimitProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -17,14 +20,18 @@ public class SecurityConfig {
 
     private final JwtService jwtService;
     private final RestAuthErrorHandler authErrorHandler;
+    private final RateLimitProperties rateLimitProperties;
 
-    public SecurityConfig(JwtService jwtService, RestAuthErrorHandler authErrorHandler) {
+    public SecurityConfig(JwtService jwtService,
+                          RestAuthErrorHandler authErrorHandler,
+                          RateLimitProperties rateLimitProperties) {
         this.jwtService = jwtService;
         this.authErrorHandler = authErrorHandler;
+        this.rateLimitProperties = rateLimitProperties;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, RateLimitFilter rateLimitFilter) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -39,7 +46,9 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authErrorHandler)
                         .accessDeniedHandler(authErrorHandler))
-                .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new AuthRateLimitFilter(rateLimitProperties.auth()), JwtAuthenticationFilter.class)
+                .addFilterAfter(rateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

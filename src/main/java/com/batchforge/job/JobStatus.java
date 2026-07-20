@@ -5,5 +5,9 @@ public enum JobStatus {
     QUEUED,
     PROCESSING,
     COMPLETED,
-    FAILED
+    FAILED;
+
+    public boolean isTerminal() {
+        return this == COMPLETED || this == FAILED;
+    }
 }

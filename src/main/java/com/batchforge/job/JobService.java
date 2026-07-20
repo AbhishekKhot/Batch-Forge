@@ -34,13 +34,6 @@ public class JobService {
         this.events = events;
     }
 
-
-    public String pingCache(String x) {
-        System.out.println("### pingCache BODY RAN for " + x);
-        return "val-" + x;
-    }
-
-
     @Transactional
     public CreateJobResponse createImportJob(UUID orgId, UUID submittedBy) {
         String objectKey = orgId + "/" + UUID.randomUUID() + "/source.csv";

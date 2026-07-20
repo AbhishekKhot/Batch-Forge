@@ -77,6 +77,17 @@ logging:
   level:
     root: INFO
     com.batchforge: DEBUG
+  structured:
+    format:
+      file: ecs
+    ecs:
+      service:
+        name: ${spring.application.name}
+        version: ${spring.application.version:dev}
+        environment: ${spring.profiles.active:default}
+        node-name: ${HOSTNAME:local}
+  file:
+    name: logs/batchforge.json
 
 resilience4j:
   retry:

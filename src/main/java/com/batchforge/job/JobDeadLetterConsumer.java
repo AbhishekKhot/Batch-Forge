@@ -3,6 +3,7 @@ package com.batchforge.job;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
+import org.slf4j.MDC;
 
 @Slf4j
 @Component
@@ -16,7 +17,12 @@ public class JobDeadLetterConsumer {
 
     @RabbitListener(queues = RabbitConfig.DEAD_LETTER_QUEUE)
     public void onDeadLetter(JobMessage message) {
-        log.warn("Job {} exhausted processing retries; marking FAILED", message.jobId());
-        processing.markFailed(message.jobId());
+        MDC.put("correlationId", message.jobId().toString());
+        try {
+            log.warn("Job {} exhausted processing retries; marking FAILED", message.jobId());
+            processing.markFailed(message.jobId());
+        } finally {
+            MDC.remove("correlationId");
+        }
     }
 }

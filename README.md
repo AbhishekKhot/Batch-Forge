@@ -80,14 +80,14 @@ flowchart TB
 
 ## Prerequisites
 
-- **Docker** and **Docker Compose** (the only hard requirement — it runs everything).
-- **Java 21** and the `mvnw` wrapper — only if you want to build/run the app from source or run the tests. (For just *trying* BatchForge, Docker alone is enough.)
+- **Docker** and **Docker Compose**.
+- **Java 21** and the `mvnw` wrapper — needed to build and run the app from source, or to run the test suite.
 
 ---
 
 ## Quick start
 
-### Option A — Everything in Docker (simplest)
+### Option A — Everything in Docker
 
 Builds the app and starts it together with the database, queue, cache, and storage.
 One command, nothing else to install beyond Docker:
@@ -112,8 +112,8 @@ To stop: `Ctrl-C`, then `docker compose down` (add `-v` to also wipe the stored 
 
 ### Option B — Backing services in Docker, app from source (for development)
 
-Start just the infrastructure, then run the app from your IDE or the command line —
-handy when you're changing code and want fast restarts:
+Run the backing services in Docker and the application from source. This gives you fast
+restarts while developing and direct access to logs and the debugger from your IDE:
 
 ```bash
 # 1. Start Postgres, RabbitMQ, Redis, MinIO (leave the "app" service out)
@@ -180,10 +180,11 @@ error report; valid rows are imported. A job with some bad rows still completes 
 
 ## Configuration
 
-All settings have sensible defaults for local use, so nothing is required to get started.
-For a real deployment, override the credentials and secrets via environment variables —
-see [`.env.example`](.env.example) for the full list (database, queue, cache, storage, and
-JWT secret).
+Every setting ships with a working default for local use, so no configuration is needed to
+run BatchForge on your machine. For any real deployment, supply your own credentials and
+secrets through environment variables. The full list of variables — covering the database,
+message queue, cache, object storage, and the JWT signing secret — is documented in
+[`.env.example`](.env.example).
 
 **Profiles:** the app runs in a permissive **dev** mode by default (Swagger UI on, full
 health/metrics endpoints). Set `SPRING_PROFILES_ACTIVE=prod` to harden it for production —
@@ -193,12 +194,20 @@ API docs are disabled and only the health endpoint is exposed.
 
 ## Running the tests
 
-The test suite runs the app against **real** Postgres, Redis, and MinIO using Testcontainers,
-so **Docker must be running**:
+The test suite runs the application against **real** Postgres, Redis, and MinIO instances.
+It uses Testcontainers, which starts these dependencies automatically in throwaway
+containers for the duration of the run — you do **not** need to start the compose stack
+yourself.
+
+1. Make sure Docker is running (Docker Desktop open, or the Docker daemon started).
+2. Run the suite:
 
 ```bash
 ./mvnw test
 ```
+
+Testcontainers will spin up the databases it needs, run all tests against them, and tear
+them down when finished.
 
 After the run, a code-coverage report is generated at:
 

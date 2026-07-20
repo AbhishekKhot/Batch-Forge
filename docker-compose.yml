@@ -92,6 +92,43 @@ services:
         mc mb --ignore-existing "local/$$MINIO_BUCKET"
         echo "MinIO bucket ready: $$MINIO_BUCKET"
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: batchforge-app:latest
+    container_name: batchforge-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    environment:
+      # Talk to sibling containers by SERVICE NAME + INTERNAL port (not host-remapped ports)
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-batchforge}
+      DB_USERNAME: ${POSTGRES_USER:-batchforge}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-batchforge}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: ${RABBITMQ_USER:-batchforge}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-batchforge}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-batchforge}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-batchforge}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-batchforge}
+      MINIO_BUCKET: ${MINIO_BUCKET:-batchforge}
+      BATCHFORGE_JWT_SECRET: ${BATCHFORGE_JWT_SECRET:-dev-only-insecure-secret-change-me-in-production-1234567890}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
+    ports:
+      - "8080:8080"
+
 volumes:
   postgres-data:
   rabbitmq-data:

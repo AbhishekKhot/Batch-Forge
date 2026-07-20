@@ -1,6 +1,8 @@
 spring:
   application:
     name: batchforge
+  lifecycle:
+    timeout-per-shutdown-phase: 30s  #max wait per shutdown phase before forcing (covers a mid-batch flush)
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5434/batchforge}
@@ -108,3 +110,7 @@ resilience4j:
         permitted-number-of-calls-in-half-open-state: 3
         record-exceptions:
           - com.batchforge.storage.StorageException
+
+
+server:
+  shutdown: graceful          # Tomcat stops accepting new requests, lets in-flight ones finish

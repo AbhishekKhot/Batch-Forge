@@ -1,0 +1,11 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health          # prod: only /actuator/health (drops metrics, info, etc.)
+
+springdoc:
+  api-docs:
+    enabled: false               # prod: no /v3/api-docs
+  swagger-ui:
+    enabled: false               # prod: no /swagger-ui

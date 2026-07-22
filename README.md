@@ -11,8 +11,6 @@ What sets it apart is its behavior at the edges:
 - **Multi-tenant from the ground up.** Every user belongs to an organization, and tenant isolation is enforced at the query layer — never trusting a client-supplied identifier.
 - **Fails loudly, recovers gracefully.** Exhausted retries dead-letter to a DLQ and mark the job failed; the error report is derived from durable state, so it always reconciles with the data that was actually written.
 
-In short: the boring parts (upload, parse, store) are asynchronous and fast; the hard parts (idempotency, resumability, tenancy, back-pressure) are treated as the actual product.
-
 ---
 
 ## How it works (high-level design)

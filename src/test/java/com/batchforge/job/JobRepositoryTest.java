@@ -31,7 +31,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import(PostgresContainerConfiguration.class)
 class JobRepositoryTest {
 
-    // Unique tiebreaker (id) makes the sort total, so pagination is stable across page queries.
     private static final Sort NEWEST_FIRST =
             Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
 

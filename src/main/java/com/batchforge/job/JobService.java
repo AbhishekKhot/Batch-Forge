@@ -4,6 +4,8 @@ import com.batchforge.common.PagedResponse;
 import com.batchforge.common.error.ApiException;
 import com.batchforge.storage.MinioStorageService;
 import com.batchforge.storage.StorageProperties;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,15 +25,18 @@ public class JobService {
     private final MinioStorageService storageService;
     private final StorageProperties storageProperties;
     private final ApplicationEventPublisher events;
+    private final CacheManager cacheManager;
 
     public JobService(JobRepository jobRepository,
                       MinioStorageService storageService,
                       StorageProperties storageProperties,
-                      ApplicationEventPublisher events) {
+                      ApplicationEventPublisher events,
+                      CacheManager cacheManager) {
         this.jobRepository = jobRepository;
         this.storageService = storageService;
         this.storageProperties = storageProperties;
         this.events = events;
+        this.cacheManager = cacheManager;
     }
 
     @Transactional
@@ -70,9 +75,19 @@ public class JobService {
 
     @Transactional(readOnly = true)
     public JobResponse getJob(UUID jobId, UUID orgId) {
-        return jobRepository.findByIdAndOrgId(jobId, orgId)
+        Cache cache = cacheManager.getCache(CacheConfig.JOB_BY_ID);
+        String key = orgId + ":" + jobId;
+        JobResponse cached = cache.get(key, JobResponse.class);
+        if (cached != null) {
+            return cached;
+        }
+        JobResponse response = jobRepository.findByIdAndOrgId(jobId, orgId)
                 .map(JobResponse::from)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "JOB_NOT_FOUND", "Job not found"));
+        if (response.status().isTerminal()) {
+            cache.put(key, response);
+        }
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -80,7 +95,7 @@ public class JobService {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(safePage, safeSize,
-                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));  // total order -> stable pages
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));  
         Page<Job> jobs = (status == null)
                 ? jobRepository.findByOrgId(orgId, pageable)
                 : jobRepository.findByOrgIdAndStatus(orgId, status, pageable);

@@ -27,8 +27,6 @@ public class TestcontainersConfiguration {
         return new RabbitMQContainer(DockerImageName.parse("rabbitmq:4-management"));
     }
 
-    // No official Testcontainers Redis module and no @ServiceConnection support for it,
-    // so run a plain container and bind Spring's Redis properties to it directly.
     @Bean
     GenericContainer<?> redisContainer() {
         return new GenericContainer<>(DockerImageName.parse("redis:7"))

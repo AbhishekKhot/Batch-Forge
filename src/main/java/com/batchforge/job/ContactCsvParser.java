@@ -21,7 +21,6 @@ import java.util.regex.Pattern;
 @Component
 public class ContactCsvParser {
 
-    /** Push-model sink: called once per data row, exactly one of the two per row. */
     public interface RowHandler {
         void onValidRow(ContactRow row);
         void onInvalidRow(long sourceRowNumber, String reason);

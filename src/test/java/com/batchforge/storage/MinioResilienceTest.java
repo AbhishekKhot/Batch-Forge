@@ -1,10 +1,13 @@
 package com.batchforge.storage;
 
+import com.batchforge.support.PostgresContainerConfiguration;
+import com.batchforge.support.RedisContainerConfiguration;
 import io.minio.MinioClient;
 import io.minio.errors.ServerException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,6 +21,7 @@ import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @DirtiesContext
+@Import({PostgresContainerConfiguration.class, RedisContainerConfiguration.class})
 class MinioResilienceTest {
 
     @Autowired

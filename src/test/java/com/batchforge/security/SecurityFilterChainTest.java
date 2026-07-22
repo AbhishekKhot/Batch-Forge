@@ -65,7 +65,6 @@ class SecurityFilterChainTest {
         String login = """
                 { "email": "nobody@nowhere.com", "password": "whatever12" }
                 """;
-        // Reaches AuthService (INVALID_CREDENTIALS) rather than being blocked by the chain (UNAUTHENTICATED).
         mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(login))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errorCode").value("INVALID_CREDENTIALS"));

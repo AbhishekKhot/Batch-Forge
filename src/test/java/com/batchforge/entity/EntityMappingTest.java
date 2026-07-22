@@ -28,8 +28,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import(EntityMappingTest.PostgresConfig.class)
 class EntityMappingTest {
 
-    // Real Postgres via @ServiceConnection so Flyway builds the schema and
-    // ddl-auto=validate checks these mappings against the actual V1 migration.
     @TestConfiguration(proxyBeanMethods = false)
     static class PostgresConfig {
         @Bean

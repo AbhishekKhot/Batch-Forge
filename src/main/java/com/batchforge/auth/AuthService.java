@@ -70,19 +70,16 @@ public class AuthService {
         return issueTokens(user);
     }
 
-    // Rotate (reuse-detection + family-revocation live in RefreshTokenService), then mint a fresh
-    // access token from the CURRENT user row so role/email changes since issue are reflected.
     public AuthResponse refresh(RefreshTokenRequest request) {
         RotatedTokens rotated = refreshTokenService.rotate(request.refreshToken());
         User user = userRepository.findById(rotated.userId())
-                .orElseThrow(this::invalidRefreshToken); // defensive: token points at a user that no longer exists
+                .orElseThrow(this::invalidRefreshToken); 
         BatchForgeUserDetails principal = new BatchForgeUserDetails(
                 user.getId(), user.getOrgId(), user.getEmail(), user.getPasswordHash(), user.getRole());
         String accessToken = jwtService.generateAccessToken(principal);
         return AuthResponse.bearer(accessToken, rotated.refreshToken());
     }
 
-    // Idempotent, best-effort: unknown/expired/rotated tokens are no-ops.
     public void logout(RefreshTokenRequest request) {
         refreshTokenService.revoke(request.refreshToken());
     }

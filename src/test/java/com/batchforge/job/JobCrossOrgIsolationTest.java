@@ -45,17 +45,14 @@ class JobCrossOrgIsolationTest {
         String otherToken = newOrgUserToken();
         UUID jobId = createJob(ownerToken);
 
-        // GET /jobs/{id}
         mockMvc.perform(get("/jobs/" + jobId).header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value("JOB_NOT_FOUND"));
 
-        // POST /jobs/{id}/uploaded
         mockMvc.perform(post("/jobs/" + jobId + "/uploaded").header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value("JOB_NOT_FOUND"));
 
-        // GET /jobs/{id}/result
         mockMvc.perform(get("/jobs/" + jobId + "/result").header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value("JOB_NOT_FOUND"));
@@ -67,12 +64,10 @@ class JobCrossOrgIsolationTest {
         String otherToken = newOrgUserToken();
         UUID jobId = createJob(ownerToken);
 
-        // owner's list contains the job
         mockMvc.perform(get("/jobs").header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString(jobId.toString())));
 
-        // the other org's list does not
         mockMvc.perform(get("/jobs").header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken))
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString(jobId.toString()))));

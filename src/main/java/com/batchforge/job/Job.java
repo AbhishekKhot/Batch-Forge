@@ -94,7 +94,7 @@ public class Job {
     }
 
     public void markCompleted() {
-        this.totalRows = this.processedRows + this.failedRows;   // every data row: imported or failed
+        this.totalRows = this.processedRows + this.failedRows;   
         this.status = JobStatus.COMPLETED;
     }
 

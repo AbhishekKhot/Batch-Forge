@@ -27,7 +27,6 @@ public class JwtService {
     private final Duration accessTokenTtl;
 
     public JwtService(JwtProperties properties) {
-        // Built once; a secret under 256 bits makes hmacShaKeyFor throw at startup (fail fast).
         this.key = Keys.hmacShaKeyFor(properties.secret().getBytes(StandardCharsets.UTF_8));
         this.accessTokenTtl = properties.accessTokenTtl();
     }

@@ -25,8 +25,6 @@ public class ImportedRecordRepository {
         this.jdbc = jdbc;
     }
 
-    /** Batch-insert rows; a row already present for (job, source row) is silently skipped — the
-     *  idempotency guarantee that makes a redelivered/resumed job safe. */
     public void insertBatch(List<ImportedRecord> records) {
         if (records.isEmpty()) {
             return;

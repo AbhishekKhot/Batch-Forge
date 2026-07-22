@@ -41,8 +41,6 @@ public class ImportProcessor {
         writeErrorReport(jobId, ctx.sourceObjectKey());
     }
 
-    /** Renders the report from the durable {@code import_errors} rows, so it always matches
-     *  failed_rows — including failures committed before a crash/resume. */
     private void writeErrorReport(UUID jobId, String sourceObjectKey) {
         List<ImportError> errors = jobProcessing.getErrors(jobId);
         if (errors.isEmpty()) {
@@ -70,8 +68,6 @@ public class ImportProcessor {
         return sourceObjectKey.substring(0, sourceObjectKey.lastIndexOf('/') + 1) + "errors.csv";
     }
 
-    /** Buffers imported rows and failures into ~BATCH_SIZE chunks, checkpointing each flush
-     *  atomically, and skips anything at or below the resume point on a redelivery. */
     private final class Accumulator implements ContactCsvParser.RowHandler {
 
         private final UUID jobId;

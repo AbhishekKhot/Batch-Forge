@@ -42,8 +42,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (Exception e) {
-                // Invalid/expired/tampered/wrong-type token: leave the context unauthenticated.
-                // The entry point returns 401 when the route requires auth.
                 SecurityContextHolder.clearContext();
             }
         }

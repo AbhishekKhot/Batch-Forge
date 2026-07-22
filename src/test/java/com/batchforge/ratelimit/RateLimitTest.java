@@ -69,7 +69,6 @@ class RateLimitTest {
         mockMvc.perform(get("/jobs?size=2").header(HttpHeaders.AUTHORIZATION, "Bearer " + a.token()))
                 .andExpect(status().isTooManyRequests());
 
-        // b has its own bucket, unaffected by a's exhaustion
         mockMvc.perform(get("/jobs?size=2").header(HttpHeaders.AUTHORIZATION, "Bearer " + b.token()))
                 .andExpect(status().isOk());
     }

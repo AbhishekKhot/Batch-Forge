@@ -36,7 +36,7 @@ public class JobProcessingService {
             return true;
         }
         if (status == JobStatus.PROCESSING) {
-            return true;   // retry / redelivery of an in-flight job -> resume
+            return true;   
         }
         log.info("Job {} is {}; ignoring redelivery", jobId, status);
         return false;
@@ -49,7 +49,6 @@ public class JobProcessingService {
         return new ProcessingContext(job.getSourceObjectKey(), job.getLastProcessedRow());
     }
 
-    /** One atomic checkpoint: imported rows, error rows, and the progress update commit together. */
     @Transactional
     public void flushBatch(UUID jobId, List<ImportedRecord> importedRows, List<ImportError> errorRows,
                            long lastProcessedRow, long processedDelta, long failedDelta) {

@@ -49,7 +49,6 @@ class ImportLifecycleE2ETest {
 
     @MockitoBean private RabbitTemplate rabbitTemplate;
 
-    // 3 valid rows, 2 invalid (bad email, missing first_name)
     private static final String CSV = String.join("\n",
             "email,first_name,last_name,phone",
             "alice@example.com,Alice,Anderson,+1-555-0100",
@@ -62,25 +61,20 @@ class ImportLifecycleE2ETest {
     void fullImportLifecycle_completesWithErrorReport() throws Exception {
         String token = newOrgUserToken();
 
-        // 1. create the job
         String createBody = mockMvc.perform(post("/jobs").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         UUID jobId = UUID.fromString(JsonPath.read(createBody, "$.jobId"));
         String uploadUrl = JsonPath.read(createBody, "$.uploadUrl");
 
-        // 2. upload the CSV straight to MinIO via the presigned URL
         upload(uploadUrl, CSV.getBytes(StandardCharsets.UTF_8));
 
-        // 3. confirm -> QUEUED
         mockMvc.perform(post("/jobs/" + jobId + "/uploaded").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.status").value("QUEUED"));
 
-        // 4. run the worker directly (stands in for RabbitMQ delivery)
         jobConsumer.onJobMessage(new JobMessage(jobId));
 
-        // 5. status + progress reflect the processed file
         mockMvc.perform(get("/jobs/" + jobId).header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
@@ -88,7 +82,6 @@ class ImportLifecycleE2ETest {
                 .andExpect(jsonPath("$.processedRows").value(3))
                 .andExpect(jsonPath("$.failedRows").value(2));
 
-        // 6. result -> a download URL for the error report (2 rows failed)
         mockMvc.perform(get("/jobs/" + jobId + "/result").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("http")));

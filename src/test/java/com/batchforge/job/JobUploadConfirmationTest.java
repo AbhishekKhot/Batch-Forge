@@ -17,6 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.net.URI;
@@ -34,6 +35,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import({PostgresContainerConfiguration.class, RedisContainerConfiguration.class, MinioTestcontainersConfiguration.class})
+// Disable the async import consumer so the job stays QUEUED between the two confirm calls;
+// this test asserts the confirm endpoint's idempotency, not worker processing.
+@TestPropertySource(properties = "spring.rabbitmq.listener.simple.auto-startup=false")
 class JobUploadConfirmationTest {
 
     @Autowired

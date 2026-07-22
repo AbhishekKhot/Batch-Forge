@@ -12,9 +12,6 @@ import io.minio.errors.ErrorResponseException;
 import io.minio.errors.MinioException;
 import io.minio.Http;
 import org.springframework.stereotype.Service;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import io.minio.GetObjectArgs;
@@ -34,7 +31,6 @@ public class MinioStorageService {
         this.properties = properties;
     }
 
-    /** Presigned PUT URL the client uses to upload directly to MinIO (bytes never touch this app). */
     public String presignedUploadUrl(String objectKey) {
         ensureBucketExists();
         try {
@@ -49,7 +45,6 @@ public class MinioStorageService {
         }
     }
 
-    /** Size in bytes if the object exists; empty if it does not. */
     @Retry(name="minio")
     @CircuitBreaker(name="minio")
     public Optional<Long> objectSize(String objectKey) {
@@ -91,7 +86,6 @@ public class MinioStorageService {
         }
     }
 
-    /** Streaming read of an object. The caller must close the returned stream. */
     @Retry(name="minio")
     @CircuitBreaker(name="minio")
     public InputStream getObject(String objectKey) {

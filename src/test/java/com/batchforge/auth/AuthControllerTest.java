@@ -21,8 +21,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// MOCK web env (the @SpringBootTest default) so @AutoConfigureMockMvc can provide MockMvc.
-// Imports the two container configs directly rather than extending the real-server IntegrationTest.
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
 @Import({PostgresContainerConfiguration.class, RedisContainerConfiguration.class})
@@ -47,12 +45,12 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.refreshToken").isNotEmpty())
                 .andExpect(jsonPath("$.tokenType").value("Bearer"));
 
-        Optional<User> stored = userRepository.findByEmail("owner@example.com"); // case-insensitive
+        Optional<User> stored = userRepository.findByEmail("owner@example.com"); 
         assertThat(stored).isPresent();
         User u = stored.get();
-        assertThat(u.getEmail()).isEqualTo("Owner@Example.com");        // stored as entered
+        assertThat(u.getEmail()).isEqualTo("Owner@Example.com");       
         assertThat(u.getRole()).isEqualTo(Role.ORG_OWNER);
-        assertThat(u.getPasswordHash()).isNotEqualTo("s3cretpassword"); // not plaintext
+        assertThat(u.getPasswordHash()).isNotEqualTo("s3cretpassword");
         assertThat(passwordEncoder.matches("s3cretpassword", u.getPasswordHash())).isTrue();
     }
 
@@ -145,7 +143,7 @@ class AuthControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         String rotated = JsonPath.read(json, "$.refreshToken");
-        assertThat(rotated).isNotEqualTo(refreshToken); // new secret each rotation (access token may be byte-identical, so not asserted)
+        assertThat(rotated).isNotEqualTo(refreshToken); 
     }
 
     @Test
@@ -171,12 +169,10 @@ class AuthControllerTest {
                 .andReturn().getResponse().getContentAsString();
         String rotated = JsonPath.read(json, "$.refreshToken");
 
-        // Replaying the original (now-rotated) token is reuse => 401 and the family is killed.
         mockMvc.perform(post("/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(originalBody))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errorCode").value("INVALID_REFRESH_TOKEN"));
 
-        // The legitimately-rotated token is now dead too, because reuse revoked the whole family.
         String rotatedBody = """
                 { "refreshToken": "%s" }
                 """.formatted(rotated);

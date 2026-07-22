@@ -1,15 +1,17 @@
 # BatchForge
 
-BatchForge is a backend service for **importing large CSV files in the background**.
+**BatchForge is a production-grade backend for ingesting large CSV files asynchronously — engineered for correctness under failure.**
 
-You hand it a CSV of contacts, it validates and stores every row, keeps the good rows,
-records the bad ones in a downloadable error report, and lets you check progress at any
-time — all without making you wait while it works. Uploads, processing, and results are
-handled asynchronously, so a file with tens of thousands of rows is no problem.
+It is a Spring Boot service that turns a bulk contact import into a first-class, observable job. Clients upload a CSV directly to object storage through a time-limited presigned URL — bytes never flow through the application tier — and a RabbitMQ-driven worker validates and persists rows in checkpointed batches. Valid rows are imported, invalid rows are captured in a downloadable error report, and progress is queryable at every moment.
 
-Each customer (an *organization*) sees only its own data, uploads are secured with
-time-limited links, and a job that gets interrupted safely resumes where it left off
-without creating duplicates.
+What sets it apart is its behavior at the edges:
+
+- **Crash-safe by design.** Work is committed in idempotent, checkpointed batches, so a worker that dies mid-file resumes exactly where it left off — no duplicated rows, no lost progress.
+- **Exactly-once effects over at-least-once delivery.** A claim gate and `AFTER_COMMIT` publishing eliminate the classic lost-update and phantom-message races that plague naive queue consumers.
+- **Multi-tenant from the ground up.** Every user belongs to an organization, and tenant isolation is enforced at the query layer — never trusting a client-supplied identifier.
+- **Fails loudly, recovers gracefully.** Exhausted retries dead-letter to a DLQ and mark the job failed; the error report is derived from durable state, so it always reconciles with the data that was actually written.
+
+In short: the boring parts (upload, parse, store) are asynchronous and fast; the hard parts (idempotency, resumability, tenancy, back-pressure) are treated as the actual product.
 
 ---
 
@@ -53,13 +55,18 @@ flowchart TB
     class PG,MQ,Redis,MinIO infra;
 ```
 
-**The lifecycle of an import, in plain terms:**
+**The lifecycle of an import**
 
-1. **Sign in.** Register an organization (the first user becomes its owner) or log in to get an access token.
-2. **Create a job.** Ask for a new import job; you get back a job ID and a temporary link to upload your file.
-3. **Upload.** Send your CSV straight to storage using that link.
-4. **Confirm.** Tell BatchForge the file is ready; the job is queued for processing.
-5. **Track & retrieve.** The worker processes the file in the background. Poll the job to watch its progress, and once it's done, fetch the result (including an error report if any rows failed validation).
+Every job moves through an explicit state machine — `PENDING → QUEUED → PROCESSING → COMPLETED | FAILED` — and each transition is durable and recoverable:
+
+1. **Authenticate.** Register an organization (the first user becomes its owner) or log in to receive a stateless JWT scoped to that tenant.
+2. **Create the job** (`PENDING`). The API mints a job record and hands back a job ID plus a short-lived presigned upload URL. No file has moved yet.
+3. **Upload direct-to-storage.** The client streams the CSV straight to object storage using the presigned URL — the application never buffers the payload, so file size is bounded by storage, not memory.
+4. **Confirm** (`QUEUED`). The API verifies the object landed in storage, commits the state change, and — only *after commit* — publishes the job to RabbitMQ. This ordering is deliberate: a message is never emitted for work that isn't durably persisted.
+5. **Process** (`PROCESSING`). The worker claims the job, streams the CSV, and writes rows in ~500-row batches. Each batch commits the imported rows, the error rows, and the progress cursor in a single transaction, so progress advances only as data lands.
+6. **Complete & retrieve** (`COMPLETED`). Poll the job to watch live progress; on completion, fetch the result and — if any rows failed validation — a download link for the error report, rendered from the durable error rows.
+
+If the worker crashes at step 5, redelivery re-claims the job, reads the last committed cursor, and skips everything already imported. If processing exhausts its retries, the message dead-letters and the job is marked `FAILED`. Either way, the system converges to a consistent, explainable state.
 
 ---
 
@@ -87,10 +94,8 @@ flowchart TB
 
 ## Quick start
 
-### Option A — Everything in Docker
-
-Builds the app and starts it together with the database, queue, cache, and storage.
-One command, nothing else to install beyond Docker:
+Bring up the entire stack — the application plus PostgreSQL, RabbitMQ, Redis, and MinIO —
+with a single command. Nothing to install beyond Docker:
 
 ```bash
 docker compose up --build
@@ -110,24 +115,9 @@ Default username/password for the consoles is `batchforge` / `batchforge` (dev o
 
 To stop: `Ctrl-C`, then `docker compose down` (add `-v` to also wipe the stored data).
 
-### Option B — Backing services in Docker, app from source (for development)
-
-Run the backing services in Docker and the application from source. This gives you fast
-restarts while developing and direct access to logs and the debugger from your IDE:
-
-```bash
-# 1. Start Postgres, RabbitMQ, Redis, MinIO (leave the "app" service out)
-docker compose up -d postgres rabbitmq redis minio minio-init
-
-# 2. Run BatchForge from source
-./mvnw spring-boot:run
-```
-
-The app connects to the services on their host ports (Postgres `5434`, Redis `6380`, etc.).
-
 ---
 
-## Trying it out
+## End-to-end API walkthrough
 
 The friendliest way is **Swagger UI** (http://localhost:8080/swagger-ui/index.html) — you can
 fill in and send every request from the browser. If you prefer the command line, here's the
@@ -175,20 +165,6 @@ bob@example.com,Bob,Brown,
 
 Rows that fail these rules are skipped, counted as failures, and listed in the downloadable
 error report; valid rows are imported. A job with some bad rows still completes successfully.
-
----
-
-## Configuration
-
-Every setting ships with a working default for local use, so no configuration is needed to
-run BatchForge on your machine. For any real deployment, supply your own credentials and
-secrets through environment variables. The full list of variables — covering the database,
-message queue, cache, object storage, and the JWT signing secret — is documented in
-[`.env.example`](.env.example).
-
-**Profiles:** the app runs in a permissive **dev** mode by default (Swagger UI on, full
-health/metrics endpoints). Set `SPRING_PROFILES_ACTIVE=prod` to harden it for production —
-API docs are disabled and only the health endpoint is exposed.
 
 ---
 
@@ -240,12 +216,3 @@ batchforge/
 ├── docker-compose.yml
 └── .env.example
 ```
-
----
-
-## Troubleshooting
-
-- **`docker compose up` fails immediately** — make sure Docker Desktop (or your Docker daemon) is actually running.
-- **Port already in use** — BatchForge uses `8080` (app), `5434` (Postgres), `6380` (Redis), `5672`/`15672` (RabbitMQ), `9000`/`9001` (MinIO). Stop whatever else is using those ports, or change the mappings in `docker-compose.yml`.
-- **Running from source and it can't connect** — start the backing services first (Option B, step 1); the app expects them on their host ports.
-- **`./mvnw test` fails to start containers** — Docker isn't running, or your machine can't pull the test images. Confirm `docker ps` works.
